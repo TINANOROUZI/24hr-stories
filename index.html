@@ -1,13 +1,28 @@
-<!-- ...head unchanged... -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0f23" />
+  <title>24hr Stories — Glass</title>
+
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="navbar.css" />
+</head>
 <body>
   <!-- Navbar mount -->
   <div id="app-navbar"></div>
+
 
   <!-- Background -->
   <div class="bg"></div>
   <div class="bg-orb orb-a"></div>
   <div class="bg-orb orb-b"></div>
 
+  <!-- Main content area -->
   <div class="viewport-center">
     <header class="hero">
       <h1>24hr Story Feature</h1>
@@ -26,18 +41,8 @@
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>
             </svg>
-
-            <!-- IMPORTANT: input lives INSIDE the bubble (mobile-friendly) -->
-            <input
-              id="fileInput"
-              type="file"
-              accept="image/*,video/*"
-              capture="environment"
-              multiple
-              aria-label="Choose photos or videos"
-            />
           </button>
-          <!-- story bubbles appended here by app.js -->
+          <!-- story bubbles will be appended here by app.js -->
         </div>
       </section>
 
@@ -45,17 +50,70 @@
         <p>No stories yet. Tap the <strong>+</strong> to add your first story.</p>
       </section>
     </main>
+  </div><!-- /.viewport-center -->
+  </div><!-- /.viewport-center -->
+
+<!-- Contact -->
+<section id="contact" class="contact-wrap reveal">
+  <div class="contact-inner">
+    <h2 class="contact-title">Let’s talk</h2>
+    <p class="contact-text">
+      Questions, collabs, or feature requests? I’d love to hear from you.
+      Email or call me and I’ll get back within 24 hours.
+    </p>
+
+    <div class="contact-cards">
+      <a class="contact-card" href="mailto:you@example.com">
+        <span class="icon" aria-hidden="true">
+          <!-- mail icon -->
+          <svg viewBox="0 0 24 24"><path d="M4 6h16a2 2 0 0 1 2 2v.3l-10 6.5L2 8.3V8a2 2 0 0 1 2-2Zm0 5.7 8 5.2 8-5.2V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4.3Z"/></svg>
+        </span>
+        <div class="info">
+          <strong>Email</strong>
+          <span>you@example.com</span>
+        </div>
+      </a>
+
+      <a class="contact-card" href="tel:+393331234567">
+        <span class="icon" aria-hidden="true">
+          <!-- phone icon -->
+          <svg viewBox="0 0 24 24"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1.5 1.5 0 0 1 1.5-.36c1.63.54 3.39.84 5.2.84.83 0 1.5.67 1.5 1.5V21a3 3 0 0 1-3 3C9.94 24 0 14.06 0 3a3 3 0 0 1 3-3h2.82C6.65 0 7.32.67 7.32 1.5c0 1.81.3 3.57.84 5.2.2.52.08 1.12-.36 1.55L6.6 10.8Z"/></svg>
+        </span>
+        <div class="info">
+          <strong>Phone</strong>
+          <span>+39 333 123 4567</span>
+        </div>
+      </a>
+    </div>
   </div>
+</section>
 
-  <!-- Contact ... footer ... unchanged ... -->
+<!-- Footer at the end of the page -->
+<footer class="site-footer">
+  <div class="rule"></div>
+  <p>© <span id="year">2025</span> • 24hr Stories</p>
+</footer>
 
-  <!-- REMOVE the old offscreen input. No longer needed. -->
+
+
+  <!-- Hidden-but-clickable file input (keep present for iOS Safari) -->
+  <!-- before: had capture="environment" -->
+<input
+  id="fileInput"
+  class="visually-hidden-file"
+  type="file"
+  accept="image/*,video/*"
+  multiple
+  aria-hidden="true"
+  tabindex="-1"
+/>
 
   <!-- Scripts -->
   <script src="app.js" defer></script>
   <script src="add-bubble.js" defer></script>
   <script src="navbar.js" defer></script>
 
+  <!-- Auto-update footer year -->
   <script>
     const y = document.getElementById("year");
     if (y) y.textContent = new Date().getFullYear();
