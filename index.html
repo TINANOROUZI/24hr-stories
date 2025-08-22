@@ -37,11 +37,13 @@
 
         <div id="storiesStrip" class="stories-strip" aria-label="Stories carousel">
           <!-- + Add bubble (first child) -->
-          <button id="addBubble" class="bubble add" type="button" aria-label="Add a story">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>
-            </svg>
-          </button>
+         <label id="addBubble" class="bubble add" for="fileInput" role="button" tabindex="0" aria-label="Add a story">
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>
+  </svg>
+</label>
+
+
           <!-- story bubbles will be appended here by app.js -->
         </div>
       </section>
