@@ -10,17 +10,14 @@
 *{ box-sizing:border-box }
 html,body{ height:100% }
 body{
-  margin:0; padding-top: var(--navH);
+  margin:0; padding-top: 0; /* navbar ثابت نداریم */
   color:var(--fg); background:var(--bg);
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   overflow-x:hidden;
 }
 
-/* اگر جایی ورودی مخفی دارید */
-.visually-hidden-file{
-  position:fixed; left:-9999px; top:-9999px;
-  width:1px; height:1px; opacity:0; pointer-events:none;
-}
+/* اگر جایی ورودی مخفی قدیمی بود، دیگر لازم نیست */
+.visually-hidden-file{ display:none !important; }
 
 /* ============== Background ============== */
 .bg{
@@ -52,7 +49,7 @@ body{
 
 /* ============== Layout ============== */
 .viewport-center{
-  min-height: calc(100svh - var(--navH) - var(--tickerH));
+  min-height: calc(100svh - var(--tickerH));
   display:flex; flex-direction:column; justify-content:center; align-items:center;
   gap:18px; padding-block:8px;
 }
@@ -91,6 +88,7 @@ body{
 .bubble img, .bubble video{
   width:100%; height:100%; object-fit:cover; border-radius:999px; padding:2px;
 }
+/* حلقه‌ی دور حباب نباید کلیک را بگیرد */
 .bubble::after{
   content:""; position:absolute; inset:-3px; border-radius:inherit;
   background:conic-gradient(from 0deg, var(--ring), transparent 25% 75%, var(--ring));
@@ -98,8 +96,10 @@ body{
   -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%);
   mask: radial-gradient(circle, transparent 62%, #000 63%);
   animation:spin 2.8s linear infinite;
+  pointer-events:none;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
+.bubble svg{ pointer-events:none; } /* تا svg جلوی لمس را نگیرد */
 
 /* Add bubble (+) */
 .bubble.add{
@@ -108,6 +108,7 @@ body{
   color:#bcd0ff;
   display:grid; place-items:center;
   animation:pulse 2.2s ease-in-out infinite;
+  position: relative;
 }
 .bubble.add svg{ width:30px; height:30px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.4)) }
 .bubble.add::after{ display:none; }
@@ -117,7 +118,7 @@ body{
 .bubble.add input[type="file"]{
   position:absolute; inset:0;
   width:100%; height:100%;
-  opacity:0; cursor:pointer; display:block; z-index:3;
+  opacity:0; cursor:pointer; display:block; z-index:5;
   -webkit-appearance:none; appearance:none;
 }
 
@@ -180,73 +181,6 @@ body{
   border-radius: 1px;
 }
 
-/* ============== Contact Section ============== */
-.contact-wrap{
-  width: min(1060px, 100% - 32px);
-  margin: 24px auto 28px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  backdrop-filter: blur(10px) saturate(120%);
-  box-shadow: 0 30px 80px rgba(0,0,0,.35);
-  overflow: hidden;
-}
-.contact-inner{ padding: 22px 18px 18px; }
-.contact-title{
-  margin: 0 0 6px;
-  font-size: clamp(22px, 3.5vw, 28px);
-  font-weight: 800;
-  letter-spacing: .2px;
-}
-.contact-text{
-  margin: 0 0 14px;
-  color: var(--muted);
-  font-size: 14px;
-}
-.contact-cards{
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
-  gap: 12px;
-}
-.contact-card{
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px; border-radius: 14px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.18);
-  text-decoration: none; color: var(--fg);
-  transform: translateY(0); transition: transform .18s, background .2s, border-color .2s;
-}
-.contact-card:hover{ transform: translateY(-2px); background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.28); }
-.contact-card:active{ transform: scale(.98); }
-.contact-card .icon{
-  width: 40px; height: 40px; border-radius: 12px;
-  display: grid; place-items: center;
-  background: linear-gradient(135deg,#7aa2ff33,#7f5bff33);
-  border: 1px solid rgba(255,255,255,.18);
-}
-.contact-card .icon svg{
-  width: 22px; height: 22px; display:block;
-  fill: currentColor; opacity: .9;
-}
-.contact-card .info strong{ display:block; font-size: 14px; }
-.contact-card .info span{ display:block; font-size: 13px; color: var(--muted); }
-
 /* ============== Reveal Animation ============== */
 .reveal{ opacity: 0; transform: translateY(14px); }
 .reveal.reveal-in{ opacity: 1; transform: none; transition: opacity .5s ease, transform .5s ease; }
-
-/* ============== Responsive bits (if navbar.css not handling) ============== */
-/* Phone layout (≤560px): hide desktop links, show hamburger */
-@media (max-width: 560px){
-  .nav-links{ display: none !important; }
-  .hamb{ display: inline-grid !important; }
-}
-
-/* Tablet & desktop (>560px): show desktop links, hide hamburger */
-@media (min-width: 561px){
-  .nav-links{ display: flex !important; }
-  .hamb{ display: none !important; }
-}
-
-/* چون نوار بالایی ثابت نیست، پدینگ قبلی لازم نیست */
-body { padding-top: 0; }
