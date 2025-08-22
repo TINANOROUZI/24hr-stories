@@ -5,6 +5,8 @@
   --card:rgba(255,255,255,.06); --border:rgba(255,255,255,.14);
   --ring:#7aa2ff; --progress:#fff; --progress-dim:#4b5a7a;
 }
+
+/* ============== Base / Reset ============== */
 *{ box-sizing:border-box }
 html,body{ height:100% }
 body{
@@ -14,13 +16,13 @@ body{
   overflow-x:hidden;
 }
 
-/* keep input present (iOS) but invisible (اگر جای دیگری استفاده شد) */
+/* اگر جایی ورودی مخفی دارید */
 .visually-hidden-file{
   position:fixed; left:-9999px; top:-9999px;
   width:1px; height:1px; opacity:0; pointer-events:none;
 }
 
-/* background */
+/* ============== Background ============== */
 .bg{
   position:fixed; inset:0;
   background:
@@ -48,7 +50,7 @@ body{
 @keyframes floatB{0%,100%{transform:translate(0,0)}50%{transform:translate(-6vmax,-3vmax)}}
 .bg, .bg-orb { pointer-events:none; }
 
-/* layout */
+/* ============== Layout ============== */
 .viewport-center{
   min-height: calc(100svh - var(--navH) - var(--tickerH));
   display:flex; flex-direction:column; justify-content:center; align-items:center;
@@ -59,7 +61,7 @@ body{
 .hero .sub{ margin:10px 0 16px; color:var(--muted); font-size:16px; }
 .shell{ width:min(1060px, 100% - 32px); margin:0 auto; display:grid; gap:16px; }
 
-/* card */
+/* ============== Card ============== */
 .stories-wrap{
   background:var(--card); border:1px solid var(--border); border-radius:16px; padding:14px;
   backdrop-filter: blur(10px) saturate(120%); box-shadow:0 30px 80px rgba(0,0,0,.35);
@@ -67,7 +69,7 @@ body{
 .pop{ opacity:0; transform:translateY(12px); animation:rise .6s .15s forwards }
 @keyframes rise{ to{ opacity:1; transform:none } }
 
-/* strip */
+/* ============== Top Strip ============== */
 .stories-strip{
   display:flex; align-items:center; gap:16px; overflow-x:auto; padding:8px;
   scrollbar-width:thin; scrollbar-color:#2a3a69 transparent; min-height:86px;
@@ -76,7 +78,7 @@ body{
 .stories-strip::-webkit-scrollbar{ height:8px }
 .stories-strip::-webkit-scrollbar-thumb{ background:#2a3a69; border-radius:8px }
 
-/* bubbles */
+/* ============== Bubbles ============== */
 .bubble{
   flex:0 0 auto; width:70px; height:70px; border-radius:999px; position:relative;
   display:grid; place-items:center; cursor:pointer; background:rgba(255,255,255,.06);
@@ -99,7 +101,7 @@ body{
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* add bubble */
+/* Add bubble (+) */
 .bubble.add{
   background:rgba(255,255,255,.04);
   border:1px dashed rgba(255,255,255,.28);
@@ -110,7 +112,8 @@ body{
 .bubble.add svg{ width:30px; height:30px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.4)) }
 .bubble.add::after{ display:none; }
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(122,162,255,.35)}50%{box-shadow:0 0 0 16px rgba(122,162,255,0)}}
-/* Make the file input cover the + bubble (iOS-friendly) */
+
+/* ورودی واقعی داخل حباب — لمس مستقیم روی موبایل */
 .bubble.add input[type="file"]{
   position:absolute; inset:0;
   width:100%; height:100%;
@@ -118,7 +121,7 @@ body{
   -webkit-appearance:none; appearance:none;
 }
 
-/* viewer */
+/* ============== Viewer ============== */
 .viewer{
   position:fixed; inset:0; display:grid; place-items:center; background:rgba(5,7,16,.65);
   backdrop-filter: blur(4px); transition:opacity .25s; opacity:0; z-index:50;
@@ -128,9 +131,11 @@ body{
   position:relative; width:min(980px,100%); height:100vh; background:#000;
   display:grid; grid-template-rows:auto 1fr; overflow:hidden; transform:scale(.985); opacity:.98;
   transition: transform .28s, opacity .28s;
+  touch-action: pan-y; /* allow horizontal swipe via JS */
 }
 .viewer.open .viewer-inner{ transform:scale(1); opacity:1 }
 .viewer img{ width:100%; height:100%; object-fit:contain }
+
 .viewer-close{
   position:absolute; top:10px; right:10px; z-index:3; background:rgba(255,255,255,.16);
   color:#fff; border:0; border-radius:999px; width:38px; height:38px; font-size:24px; line-height:38px; cursor:pointer;
@@ -140,13 +145,16 @@ body{
   background:rgba(255,255,255,.14); color:#fff; font-size:30px; cursor:pointer;
 }
 .nav.prev{ left:10px } .nav.next{ right:10px }
+
 .progress-row{ display:flex; gap:6px; padding:12px 12px 8px; z-index:2 }
-.segment{ flex:1; height:4px; background:var(--progress-dim); border-radius:20px; overflow:hidden;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+.segment{
+  flex:1; height:4px; background:var(--progress-dim); border-radius:20px; overflow:hidden;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+}
 .segment-fill{ width:0%; height:100%; background:var(--progress); transition:width .06s linear }
 .segment.done .segment-fill{ width:100% }
 
-.viewer-inner{ touch-action: pan-y; } /* allow our horizontal swipe handler */
+/* Toolbar + Buttons */
 .stories-toolbar{
   display:flex; justify-content:flex-end; gap:8px; margin-bottom:8px;
 }
@@ -156,6 +164,8 @@ body{
   border:1px solid rgba(255,255,255,.18);
 }
 .btn-secondary:hover{ background:rgba(255,255,255,.09) }
+
+/* ============== Footer ============== */
 .site-footer{
   width:min(1060px, 100% - 32px);
   margin: 8px auto 20px;
@@ -170,7 +180,7 @@ body{
   border-radius: 1px;
 }
 
-/* ===== Contact section ===== */
+/* ============== Contact Section ============== */
 .contact-wrap{
   width: min(1060px, 100% - 32px);
   margin: 24px auto 28px;
@@ -198,19 +208,6 @@ body{
   grid-template-columns: repeat(2, minmax(0,1fr));
   gap: 12px;
 }
-
-/* Phone layout (≤560px): hide desktop links, show hamburger */
-@media (max-width: 560px){
-  .nav-links{ display: none !important; }
-  .hamb{ display: inline-grid !important; }
-}
-
-/* Tablet & desktop (>560px): show desktop links, hide hamburger */
-@media (min-width: 561px){
-  .nav-links{ display: flex !important; }
-  .hamb{ display: none !important; }
-}
-
 .contact-card{
   display: flex; align-items: center; gap: 12px;
   padding: 14px; border-radius: 14px;
@@ -234,9 +231,22 @@ body{
 .contact-card .info strong{ display:block; font-size: 14px; }
 .contact-card .info span{ display:block; font-size: 13px; color: var(--muted); }
 
-/* scroll-reveal animation */
+/* ============== Reveal Animation ============== */
 .reveal{ opacity: 0; transform: translateY(14px); }
 .reveal.reveal-in{ opacity: 1; transform: none; transition: opacity .5s ease, transform .5s ease; }
+
+/* ============== Responsive bits (if navbar.css not handling) ============== */
+/* Phone layout (≤560px): hide desktop links, show hamburger */
+@media (max-width: 560px){
+  .nav-links{ display: none !important; }
+  .hamb{ display: inline-grid !important; }
+}
+
+/* Tablet & desktop (>560px): show desktop links, hide hamburger */
+@media (min-width: 561px){
+  .nav-links{ display: flex !important; }
+  .hamb{ display: none !important; }
+}
 
 /* چون نوار بالایی ثابت نیست، پدینگ قبلی لازم نیست */
 body { padding-top: 0; }
