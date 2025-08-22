@@ -10,15 +10,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="navbar.css" />
 </head>
 <body>
-  <div id="app-navbar"></div>
-
+  <!-- Background -->
   <div class="bg"></div>
   <div class="bg-orb orb-a"></div>
   <div class="bg-orb orb-b"></div>
 
+  <!-- Main content area -->
   <div class="viewport-center">
     <header class="hero">
       <h1>24hr Story Feature</h1>
@@ -33,20 +32,21 @@
 
         <div id="storiesStrip" class="stories-strip" aria-label="Stories carousel">
           <!-- + Add bubble (first child) -->
-          <button id="addBubble" class="bubble add" type="button" aria-label="Add a story">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>
-            </svg>
-            <!-- input واقعی داخل حباب، تمام سطح را می‌پوشاند -->
+          <label id="addBubble" class="bubble add" aria-label="Add a story">
+            <!-- ورودی واقعی: کل سطح حباب را می‌پوشاند -->
             <input
               id="fileInput"
               type="file"
               accept="image/*,video/*"
               multiple
+              capture="environment"
               aria-label="Choose photos or videos"
             />
-          </button>
-          <!-- story bubbles appended here by app.js -->
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>
+            </svg>
+          </label>
+          <!-- داستان‌ها اینجا اضافه می‌شوند -->
         </div>
       </section>
 
@@ -73,9 +73,10 @@
     <p>© <span id="year">2025</span> • 24hr Stories</p>
   </footer>
 
+  <!-- Scripts -->
   <script src="app.js" defer></script>
-  <!-- عمداً add-bubble.js را حذف کردیم -->
-  <script src="navbar.js" defer></script>
+
+  <!-- Auto-update footer year -->
   <script>
     const y = document.getElementById("year");
     if (y) y.textContent = new Date().getFullYear();
