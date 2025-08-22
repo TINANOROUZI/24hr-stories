@@ -41,14 +41,14 @@ function load() {
 }
 function save(items) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(items)); }
-  catch { alert("Storage full. Remove some stories."); }
+  catch { alert("Storage full on this device. Remove some stories or add smaller media."); }
 }
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 /* ========= Refs ========= */
 const strip       = document.getElementById("storiesStrip");
 const emptyHint   = document.getElementById("emptyHint");
-const fileInput   = document.getElementById("fileInput");   // inside the + bubble
+const fileInput   = document.getElementById("fileInput");   // input داخل خود حباب +
 
 const viewer      = document.getElementById("viewer");
 const progressRow = document.getElementById("progressRow");
@@ -77,10 +77,51 @@ function setEmptyHint() {
   emptyHint.style.display = stories.length ? "none" : "flex";
 }
 function el(tag, cls) { const n = document.createElement(tag); if (cls) n.className = cls; return n; }
-function toDataURL(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file);
+
+/* ======== Mobile-safe image preprocessing (resize + compress) ======== */
+const MAX_IMAGE_DIM   = 1400;  // px (longest side)
+const JPEG_QUALITY    = 0.82;  // quality balance
+const MAX_VIDEO_BYTES = 4 * 1024 * 1024; // 4MB cap
+
+function readAsDataURL(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error || new Error("readAsDataURL failed"));
+    r.readAsDataURL(file);
   });
+}
+
+async function resizeImageFile(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => {
+      const im = new Image();
+      im.decoding = "async";
+      im.onload = () => res(im);
+      im.onerror = () => rej(new Error("Image decode failed"));
+      im.src = url;
+    });
+
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+    if (!iw || !ih) throw new Error("Bad image dimensions");
+
+    const scale = Math.min(1, MAX_IMAGE_DIM / Math.max(iw, ih));
+    const ow = Math.max(1, Math.round(iw * scale));
+    const oh = Math.max(1, Math.round(ih * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = ow; canvas.height = oh;
+    const ctx = canvas.getContext("2d", { alpha: false });
+    ctx.drawImage(img, 0, 0, ow, oh);
+
+    // Export as JPEG to shrink size and ensure cross-browser display
+    const dataUrl = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+    return dataUrl;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 /* ========= Render top strip (active stories only) ========= */
@@ -98,7 +139,9 @@ function renderStrip() {
     if (s.kind === "image") {
       const img = el("img"); img.src = s.data; img.alt = "Story"; b.appendChild(img);
     } else {
-      const vid = el("video"); vid.src = s.data; vid.muted = true; vid.playsInline = true; vid.preload = "metadata"; b.appendChild(vid);
+      const vid = el("video");
+      vid.src = s.data; vid.muted = true; vid.playsInline = true; vid.preload = "metadata";
+      b.appendChild(vid);
     }
     strip.appendChild(b);
   });
@@ -107,7 +150,7 @@ function renderStrip() {
 }
 window.renderStrip = renderStrip; // external access if needed
 
-/* ========= Viewer (works for active OR archive) ========= */
+/* ========= Viewer ========= */
 function ensureVideoEl() {
   if (videoEl) return videoEl;
   const v = document.createElement("video");
@@ -118,6 +161,7 @@ function ensureVideoEl() {
 }
 function clearTimers(){ if (timer){clearTimeout(timer); timer=null;} if (progressTimer){clearInterval(progressTimer); progressTimer=null;} }
 function buildProgress(){
+  if (!progressRow) return;
   progressRow.innerHTML = "";
   items().forEach((_, i) => {
     const seg = el("div","segment"); const fill = el("div","segment-fill");
@@ -125,6 +169,7 @@ function buildProgress(){
   });
 }
 function setProgress(pct){
+  if (!progressRow) return;
   const seg = progressRow.children[currentIndex]; if (!seg) return;
   const fill = seg.querySelector(".segment-fill"); if (fill) fill.style.width = `${pct}%`;
 }
@@ -145,7 +190,8 @@ function showCurrent(){
     timer = setTimeout(next, D);
   } else {
     const v = ensureVideoEl(); imgEl.style.display = "none"; imgEl.src = "";
-    if (v.parentNode !== viewer.querySelector(".viewer-inner")) viewer.querySelector(".viewer-inner").appendChild(v);
+    const mount = viewer.querySelector(".viewer-inner");
+    if (v.parentNode !== mount) mount.appendChild(v);
     v.src = s.data; v.currentTime = 0; v.play().catch(()=>{}); setProgress(0);
     const onMeta = () => {
       clearInterval(progressTimer);
@@ -154,11 +200,8 @@ function showCurrent(){
         setProgress((v.currentTime / v.duration) * 100);
       }, 80);
     };
-    v.removeEventListener("loadedmetadata", onMeta);
     v.addEventListener("loadedmetadata", onMeta, { once:true });
-    const onEnded = () => next();
-    v.removeEventListener("ended", onEnded);
-    v.addEventListener("ended", onEnded, { once:true });
+    v.addEventListener("ended", () => next(), { once:true });
   }
   buildProgress();
 }
@@ -178,21 +221,40 @@ function closeViewer(){
 function prev(){ clearTimers(); const L = items().length; currentIndex = (currentIndex - 1 + L) % L; showCurrent(); }
 function next(){ clearTimers(); const L = items().length; currentIndex = (currentIndex + 1) % L; showCurrent(); }
 
-/* ========= Add (base64 in localStorage; expiry handled by load()) ========= */
+/* ========= Add (resize images, limit videos) ========= */
 async function handleFiles(files){
-  const MAX_MB = 4.5, maxBytes = MAX_MB * 1024 * 1024;
   for (const f of files) {
-    if (f.size > maxBytes) { alert(`"${f.name}" is larger than ${MAX_MB}MB and was skipped.`); continue; }
-    const kind = f.type.startsWith("video/") ? "video" : f.type.startsWith("image/") ? "image" : "other";
-    if (kind === "other") continue;
-    const data = await toDataURL(f);
-    stories.unshift({ id: uid(), kind, data, createdAt: now() });
+    const isVideo = f.type.startsWith("video/");
+    const isImage = f.type.startsWith("image/");
+    if (!isVideo && !isImage) continue;
+
+    try {
+      if (isVideo) {
+        if (f.size > MAX_VIDEO_BYTES) {
+          alert(`"${f.name}" is too large for mobile storage (>${(MAX_VIDEO_BYTES/1024/1024)|0}MB). Please trim/compress the video and try again.`);
+          continue;
+        }
+        const data = await readAsDataURL(f);
+        stories.unshift({ id: uid(), kind: "video", data, createdAt: now() });
+      } else {
+        let data;
+        try { data = await resizeImageFile(f); }
+        catch { data = await readAsDataURL(f); }
+        stories.unshift({ id: uid(), kind: "image", data, createdAt: now() });
+      }
+    } catch (err) {
+      console.error("Add failed:", err);
+      alert(`Could not add "${f.name}". Please try a smaller file.`);
+    }
   }
-  save(stories); renderStrip(); setEmptyHint();
+
+  save(stories);
+  renderStrip();
+  setEmptyHint();
 }
 window.handleAddStories = handleFiles;
 
-/* ========= Swipe gestures (existing) ========= */
+/* ========= Swipe gestures ========= */
 function enableSwipe(){
   const root = viewer?.querySelector(".viewer-inner");
   if (!root) return;
@@ -224,18 +286,21 @@ function enableSwipe(){
 
 /* ========= Bind UI ========= */
 function bindEvents(){
-  // فقط change یدونه input کافیست
+  // هیچ کلیک برنامه‌ای روی input نداریم — خودِ input داخل حباب است.
   fileInput?.addEventListener("change", (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     handleFiles(files).then(()=>{ fileInput.value=""; });
   });
 
-  // Archive
+  // Archive button -> open viewer in archive mode
   archiveBtn?.addEventListener("click", () => {
-    archiveStories = loadArchive();
-    if (!archiveStories.length) { alert("No archived stories yet."); return; }
-    openViewer(0, true);
+    archiveStories = loadArchive(); // refresh
+    if (!archiveStories.length) {
+      alert("No archived stories yet.");
+      return;
+    }
+    openViewer(0, true); // start from most recent archived
   });
 
   closeBtn?.addEventListener("click", closeViewer);
@@ -254,43 +319,8 @@ function bindEvents(){
   enableSwipe();
 }
 
-  });
-
-  fileInput?.addEventListener("change", (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    handleFiles(files).then(()=>{ fileInput.value=""; });
-  });
-
-  // Archive button -> open viewer in archive mode
-  archiveBtn?.addEventListener("click", () => {
-    archiveStories = loadArchive(); // refresh (maybe new items moved since load)
-    if (!archiveStories.length) {
-      alert("No archived stories yet.");
-      return;
-    }
-    openViewer(0, true); // start from most recent archived
-  });
-
-  closeBtn?.addEventListener("click", closeViewer);
-  prevBtn?.addEventListener("click", prev);
-  nextBtn?.addEventListener("click", next);
-
-  window.addEventListener("keydown", (e) => {
-    if (viewer.hasAttribute("hidden")) return;
-    if (e.key === "Escape") closeViewer();
-    if (e.key === "ArrowLeft") prev();
-    if (e.key === "ArrowRight") next();
-  });
-
-  viewer?.addEventListener("click", (e) => { if (e.target === viewer) closeViewer(); });
-
-  enableSwipe();
-}
-
 /* ========= Init ========= */
 document.addEventListener("DOMContentLoaded", () => {
-  // sweep happened in load(); archiveStories already loaded
   renderStrip();
   bindEvents();
   setEmptyHint();
