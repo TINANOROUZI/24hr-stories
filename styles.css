@@ -1,186 +1,122 @@
-:root{
-  --navH: 60px;
-  --tickerH: 26px;
-  --bg:#0b0f23; --fg:#eaf0ff; --muted:#b6c0da;
-  --card:rgba(255,255,255,.06); --border:rgba(255,255,255,.14);
-  --ring:#7aa2ff; --progress:#fff; --progress-dim:#4b5a7a;
-}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0f23" />
+  <title>24hr Stories — Glass</title>
 
-/* ============== Base / Reset ============== */
-*{ box-sizing:border-box }
-html,body{ height:100% }
-body{
-  margin:0; padding-top: 0; /* navbar ثابت نداریم */
-  color:var(--fg); background:var(--bg);
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-  overflow-x:hidden;
-}
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
-/* اگر جایی ورودی مخفی قدیمی بود، دیگر لازم نیست */
-.visually-hidden-file{ display:none !important; }
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="navbar.css" />
+</head>
+<body>
+  <!-- Navbar mount -->
+  <div id="app-navbar"></div>
 
-/* ============== Background ============== */
-.bg{
-  position:fixed; inset:0;
-  background:
-    radial-gradient(1200px 600px at 10% 10%, #16204b 0, transparent 60%),
-    radial-gradient(1200px 800px at 90% 90%, #171f3b 0, transparent 55%),
-    linear-gradient(120deg, #0b0f23, #10183a 60%, #0b0f23);
-  animation: hue 14s linear infinite; z-index:-3;
-}
-@keyframes hue{0%{filter:hue-rotate(0)}100%{filter:hue-rotate(12deg)}}
-.bg::after{
-  content:""; position:absolute; inset:0;
-  background:
-    repeating-linear-gradient(to right, rgba(255,255,255,.04) 0 1px, transparent 1px 120px),
-    repeating-linear-gradient(to bottom, rgba(255,255,255,.035) 0 1px, transparent 1px 120px);
-  mask: linear-gradient(to bottom, rgba(0,0,0,.5), transparent 60%);
-}
-.bg-orb{
-  position:fixed; width:42vmax; height:42vmax; border-radius:50%;
-  filter: blur(60px) saturate(140%); opacity:.35; z-index:-2;
-  background: radial-gradient(circle at 30% 30%, #8aa0ff, #6f88ff 40%, transparent 70%);
-}
-.orb-a{left:-12vmax; top:-6vmax; animation: floatA 26s ease-in-out infinite}
-.orb-b{right:-10vmax; bottom:-8vmax; animation: floatB 28s ease-in-out infinite}
-@keyframes floatA{0%,100%{transform:translate(0,0)}50%{transform:translate(6vmax,2vmax)}}
-@keyframes floatB{0%,100%{transform:translate(0,0)}50%{transform:translate(-6vmax,-3vmax)}}
-.bg, .bg-orb { pointer-events:none; }
 
-/* ============== Layout ============== */
-.viewport-center{
-  min-height: calc(100svh - var(--tickerH));
-  display:flex; flex-direction:column; justify-content:center; align-items:center;
-  gap:18px; padding-block:8px;
-}
-.hero{ width:min(1060px, 100% - 32px); margin:0 auto; text-align:center; }
-.hero h1{ margin:0; font-weight:800; letter-spacing:.2px; font-size:clamp(32px,5vw,46px); }
-.hero .sub{ margin:10px 0 16px; color:var(--muted); font-size:16px; }
-.shell{ width:min(1060px, 100% - 32px); margin:0 auto; display:grid; gap:16px; }
+  <!-- Background -->
+  <div class="bg"></div>
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
 
-/* ============== Card ============== */
-.stories-wrap{
-  background:var(--card); border:1px solid var(--border); border-radius:16px; padding:14px;
-  backdrop-filter: blur(10px) saturate(120%); box-shadow:0 30px 80px rgba(0,0,0,.35);
-}
-.pop{ opacity:0; transform:translateY(12px); animation:rise .6s .15s forwards }
-@keyframes rise{ to{ opacity:1; transform:none } }
+  <!-- Main content area -->
+  <div class="viewport-center">
+    <header class="hero">
+      <h1>24hr Story Feature</h1>
+      <p class="sub">Ephemeral, swipeable, and clean — stories vanish after 24 hours.</p>
+    </header>
 
-/* ============== Top Strip ============== */
-.stories-strip{
-  display:flex; align-items:center; gap:16px; overflow-x:auto; padding:8px;
-  scrollbar-width:thin; scrollbar-color:#2a3a69 transparent; min-height:86px;
-  position:relative; z-index:1;
-}
-.stories-strip::-webkit-scrollbar{ height:8px }
-.stories-strip::-webkit-scrollbar-thumb{ background:#2a3a69; border-radius:8px }
+    <main class="shell" id="stories">
+      <section class="stories-wrap pop">
+        <div class="stories-toolbar">
+          <button id="archiveBtn" class="btn-secondary" type="button">Archive</button>
+        </div>
 
-/* ============== Bubbles ============== */
-.bubble{
-  flex:0 0 auto; width:70px; height:70px; border-radius:999px; position:relative;
-  display:grid; place-items:center; cursor:pointer; background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.18); transition: transform .15s, box-shadow .2s;
-  box-shadow:0 6px 22px rgba(0,0,0,.25);
-  z-index:2;
-}
-.bubble:hover{ transform:translateY(-2px) }
-.bubble:active{ transform:scale(.96) }
-.bubble img, .bubble video{
-  width:100%; height:100%; object-fit:cover; border-radius:999px; padding:2px;
-}
-/* حلقه‌ی دور حباب نباید کلیک را بگیرد */
-.bubble::after{
-  content:""; position:absolute; inset:-3px; border-radius:inherit;
-  background:conic-gradient(from 0deg, var(--ring), transparent 25% 75%, var(--ring));
-  filter:blur(.4px); opacity:.85;
-  -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%);
-  mask: radial-gradient(circle, transparent 62%, #000 63%);
-  animation:spin 2.8s linear infinite;
-  pointer-events:none;
-}
-@keyframes spin{to{transform:rotate(360deg)}}
-.bubble svg{ pointer-events:none; } /* تا svg جلوی لمس را نگیرد */
+        <div id="storiesStrip" class="stories-strip" aria-label="Stories carousel">
+          <!-- + Add bubble (first child) -->
+          <button id="addBubble" class="bubble add" type="button" aria-label="Add a story">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>
+            </svg>
+          </button>
+          <!-- story bubbles will be appended here by app.js -->
+        </div>
+      </section>
 
-/* Add bubble (+) */
-.bubble.add{
-  background:rgba(255,255,255,.04);
-  border:1px dashed rgba(255,255,255,.28);
-  color:#bcd0ff;
-  display:grid; place-items:center;
-  animation:pulse 2.2s ease-in-out infinite;
-  position: relative;
-}
-.bubble.add svg{ width:30px; height:30px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.4)) }
-.bubble.add::after{ display:none; }
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(122,162,255,.35)}50%{box-shadow:0 0 0 16px rgba(122,162,255,0)}}
+      <section class="empty-hint pop" id="emptyHint">
+        <p>No stories yet. Tap the <strong>+</strong> to add your first story.</p>
+      </section>
+    </main>
+  </div><!-- /.viewport-center -->
+  </div><!-- /.viewport-center -->
 
-/* ورودی واقعی داخل حباب — لمس مستقیم روی موبایل */
-.bubble.add input[type="file"]{
-  position:absolute; inset:0;
-  width:100%; height:100%;
-  opacity:0; cursor:pointer; display:block; z-index:5;
-  -webkit-appearance:none; appearance:none;
-}
+<!-- Contact -->
+<section id="contact" class="contact-wrap reveal">
+  <div class="contact-inner">
+    <h2 class="contact-title">Let’s talk</h2>
+    <p class="contact-text">
+      Questions, collabs, or feature requests? I’d love to hear from you.
+      Email or call me and I’ll get back within 24 hours.
+    </p>
 
-/* ============== Viewer ============== */
-.viewer{
-  position:fixed; inset:0; display:grid; place-items:center; background:rgba(5,7,16,.65);
-  backdrop-filter: blur(4px); transition:opacity .25s; opacity:0; z-index:50;
-}
-.viewer.open{ opacity:1 }
-.viewer-inner{
-  position:relative; width:min(980px,100%); height:100vh; background:#000;
-  display:grid; grid-template-rows:auto 1fr; overflow:hidden; transform:scale(.985); opacity:.98;
-  transition: transform .28s, opacity .28s;
-  touch-action: pan-y; /* allow horizontal swipe via JS */
-}
-.viewer.open .viewer-inner{ transform:scale(1); opacity:1 }
-.viewer img{ width:100%; height:100%; object-fit:contain }
+    <div class="contact-cards">
+      <a class="contact-card" href="mailto:you@example.com">
+        <span class="icon" aria-hidden="true">
+          <!-- mail icon -->
+          <svg viewBox="0 0 24 24"><path d="M4 6h16a2 2 0 0 1 2 2v.3l-10 6.5L2 8.3V8a2 2 0 0 1 2-2Zm0 5.7 8 5.2 8-5.2V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4.3Z"/></svg>
+        </span>
+        <div class="info">
+          <strong>Email</strong>
+          <span>you@example.com</span>
+        </div>
+      </a>
 
-.viewer-close{
-  position:absolute; top:10px; right:10px; z-index:3; background:rgba(255,255,255,.16);
-  color:#fff; border:0; border-radius:999px; width:38px; height:38px; font-size:24px; line-height:38px; cursor:pointer;
-}
-.nav{
-  position:absolute; top:50%; transform:translateY(-50%); width:48px; height:48px; border:0; border-radius:999px;
-  background:rgba(255,255,255,.14); color:#fff; font-size:30px; cursor:pointer;
-}
-.nav.prev{ left:10px } .nav.next{ right:10px }
+      <a class="contact-card" href="tel:+393331234567">
+        <span class="icon" aria-hidden="true">
+          <!-- phone icon -->
+          <svg viewBox="0 0 24 24"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1.5 1.5 0 0 1 1.5-.36c1.63.54 3.39.84 5.2.84.83 0 1.5.67 1.5 1.5V21a3 3 0 0 1-3 3C9.94 24 0 14.06 0 3a3 3 0 0 1 3-3h2.82C6.65 0 7.32.67 7.32 1.5c0 1.81.3 3.57.84 5.2.2.52.08 1.12-.36 1.55L6.6 10.8Z"/></svg>
+        </span>
+        <div class="info">
+          <strong>Phone</strong>
+          <span>+39 333 123 4567</span>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
 
-.progress-row{ display:flex; gap:6px; padding:12px 12px 8px; z-index:2 }
-.segment{
-  flex:1; height:4px; background:var(--progress-dim); border-radius:20px; overflow:hidden;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
-}
-.segment-fill{ width:0%; height:100%; background:var(--progress); transition:width .06s linear }
-.segment.done .segment-fill{ width:100% }
+<!-- Footer at the end of the page -->
+<footer class="site-footer">
+  <div class="rule"></div>
+  <p>© <span id="year">2025</span> • 24hr Stories</p>
+</footer>
 
-/* Toolbar + Buttons */
-.stories-toolbar{
-  display:flex; justify-content:flex-end; gap:8px; margin-bottom:8px;
-}
-.btn-secondary{
-  padding:8px 12px; border-radius:10px; font-weight:600; cursor:pointer;
-  color:#eaf0ff; background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.18);
-}
-.btn-secondary:hover{ background:rgba(255,255,255,.09) }
 
-/* ============== Footer ============== */
-.site-footer{
-  width:min(1060px, 100% - 32px);
-  margin: 8px auto 20px;
-  text-align:center;
-  color: var(--muted);
-  font-size: 13px;
-}
-.site-footer .rule{
-  height:1px;
-  margin-bottom:10px;
-  background: linear-gradient(90deg, transparent, var(--border), transparent);
-  border-radius: 1px;
-}
 
-/* ============== Reveal Animation ============== */
-.reveal{ opacity: 0; transform: translateY(14px); }
-.reveal.reveal-in{ opacity: 1; transform: none; transition: opacity .5s ease, transform .5s ease; }
+  <!-- Hidden-but-clickable file input (keep present for iOS Safari) -->
+  <!-- before: had capture="environment" -->
+<input
+  id="fileInput"
+  class="visually-hidden-file"
+  type="file"
+  accept="image/*,video/*"
+  multiple
+  aria-hidden="true"
+  tabindex="-1"
+/>
+
+  <!-- Scripts -->
+  <script src="app.js" defer></script>
+  <script src="add-bubble.js" defer></script>
+  <script src="navbar.js" defer></script>
+
+  <!-- Auto-update footer year -->
+  <script>
+    const y = document.getElementById("year");
+    if (y) y.textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
