@@ -41,14 +41,14 @@ function load() {
 }
 function save(items) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(items)); }
-  catch { alert("Storage full. Remove some stories."); }
+  catch { alert("Storage full on this device. Remove some stories or add smaller media."); }
 }
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 /* ========= Refs ========= */
 const strip       = document.getElementById("storiesStrip");
 const emptyHint   = document.getElementById("emptyHint");
-const fileInput   = document.getElementById("fileInput");   // inside the + bubble
+const fileInput   = document.getElementById("fileInput");   // now INSIDE the + bubble
 
 const viewer      = document.getElementById("viewer");
 const progressRow = document.getElementById("progressRow");
@@ -77,9 +77,56 @@ function setEmptyHint() {
   emptyHint.style.display = stories.length ? "none" : "flex";
 }
 function el(tag, cls) { const n = document.createElement(tag); if (cls) n.className = cls; return n; }
-function toDataURL(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file);
+
+/* ======== Mobile-safe image preprocessing (resize + compress) ======== */
+const MAX_IMAGE_DIM = 1400;      // px (longest side)
+const JPEG_QUALITY  = 0.82;      // ~good balance
+const MAX_VIDEO_BYTES = 4 * 1024 * 1024; // 4MB cap for videos (base64 would be even larger)
+
+function fileToObjectURL(file) {
+  return URL.createObjectURL(file);
+}
+function revoke(url){ try { URL.revokeObjectURL(url); } catch {} }
+
+async function resizeImageFile(file) {
+  // Try to decode via <img>, draw to canvas, export JPEG
+  const url = fileToObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => {
+      const im = new Image();
+      im.decoding = "async";
+      im.onload = () => res(im);
+      im.onerror = () => rej(new Error("Image decode failed"));
+      im.src = url;
+    });
+
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+    if (!iw || !ih) throw new Error("Bad image dimensions");
+
+    const scale = Math.min(1, MAX_IMAGE_DIM / Math.max(iw, ih));
+    const ow = Math.max(1, Math.round(iw * scale));
+    const oh = Math.max(1, Math.round(ih * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = ow; canvas.height = oh;
+    const ctx = canvas.getContext("2d", { alpha: false });
+    ctx.drawImage(img, 0, 0, ow, oh);
+
+    // Export as JPEG to shrink size and ensure cross-browser display
+    const dataUrl = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+    return dataUrl;
+  } finally {
+    revoke(url);
+  }
+}
+
+function readAsDataURL(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error || new Error("readAsDataURL failed"));
+    r.readAsDataURL(file);
   });
 }
 
@@ -107,7 +154,7 @@ function renderStrip() {
 }
 window.renderStrip = renderStrip; // external access if needed
 
-/* ========= Viewer (works for active OR archive) ========= */
+/* ========= Viewer ========= */
 function ensureVideoEl() {
   if (videoEl) return videoEl;
   const v = document.createElement("video");
@@ -178,21 +225,47 @@ function closeViewer(){
 function prev(){ clearTimers(); const L = items().length; currentIndex = (currentIndex - 1 + L) % L; showCurrent(); }
 function next(){ clearTimers(); const L = items().length; currentIndex = (currentIndex + 1) % L; showCurrent(); }
 
-/* ========= Add (base64 in localStorage; expiry handled by load()) ========= */
+/* ========= Add (resize images, limit videos) ========= */
 async function handleFiles(files){
-  const MAX_MB = 4.5, maxBytes = MAX_MB * 1024 * 1024;
   for (const f of files) {
-    if (f.size > maxBytes) { alert(`"${f.name}" is larger than ${MAX_MB}MB and was skipped.`); continue; }
-    const kind = f.type.startsWith("video/") ? "video" : f.type.startsWith("image/") ? "image" : "other";
-    if (kind === "other") continue;
-    const data = await toDataURL(f);
-    stories.unshift({ id: uid(), kind, data, createdAt: now() });
+    const isVideo = f.type.startsWith("video/");
+    const isImage = f.type.startsWith("image/");
+
+    if (!isVideo && !isImage) continue;
+
+    try {
+      if (isVideo) {
+        if (f.size > MAX_VIDEO_BYTES) {
+          alert(`"${f.name}" is too large for mobile storage (>${(MAX_VIDEO_BYTES/1024/1024)|0}MB). Please trim/compress the video and try again.`);
+          continue;
+        }
+        // Videos are saved as base64 too; small only
+        const data = await readAsDataURL(f);
+        stories.unshift({ id: uid(), kind: "video", data, createdAt: now() });
+      } else {
+        // Always resize/compress images before storing (mobile-safe)
+        let data;
+        try {
+          data = await resizeImageFile(f);
+        } catch {
+          // Fallback: store original as data URL (may fail quota on iOS)
+          data = await readAsDataURL(f);
+        }
+        stories.unshift({ id: uid(), kind: "image", data, createdAt: now() });
+      }
+    } catch (err) {
+      console.error("Add failed:", err);
+      alert(`Could not add "${f.name}". Please try a smaller file.`);
+    }
   }
-  save(stories); renderStrip(); setEmptyHint();
+
+  save(stories);
+  renderStrip();
+  setEmptyHint();
 }
 window.handleAddStories = handleFiles;
 
-/* ========= Swipe gestures (existing) ========= */
+/* ========= Swipe gestures ========= */
 function enableSwipe(){
   const root = viewer?.querySelector(".viewer-inner");
   if (!root) return;
@@ -224,16 +297,8 @@ function enableSwipe(){
 
 /* ========= Bind UI ========= */
 function bindEvents(){
-  // + button already in DOM; use the offscreen input for reliability (iOS)
-  const addBtn = document.getElementById("addBubble");
-  const openPicker = (e) => { e.preventDefault(); e.stopPropagation(); fileInput?.click(); };
-  ["pointerdown","click","keydown"].forEach(evt=>{
-    addBtn?.addEventListener(evt, (e)=>{
-      if (evt==="keydown" && e.key !== "Enter" && e.key !== " ") return;
-      openPicker(e);
-    });
-  });
-
+  // IMPORTANT: we no longer programmatically .click() a hidden input.
+  // The input sits INSIDE the + bubble and captures the tap directly (mobile-safe).
   fileInput?.addEventListener("change", (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -268,7 +333,6 @@ function bindEvents(){
 
 /* ========= Init ========= */
 document.addEventListener("DOMContentLoaded", () => {
-  // sweep happened in load(); archiveStories already loaded
   renderStrip();
   bindEvents();
   setEmptyHint();
