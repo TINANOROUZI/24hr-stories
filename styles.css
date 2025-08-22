@@ -118,7 +118,7 @@ body{
   -webkit-appearance:none; appearance:none;
 }
 
-/* viewer */
+/* viewer (kept from your version) */
 .viewer{
   position:fixed; inset:0; display:grid; place-items:center; background:rgba(5,7,16,.65);
   backdrop-filter: blur(4px); transition:opacity .25s; opacity:0; z-index:50;
@@ -146,7 +146,7 @@ body{
 .segment-fill{ width:0%; height:100%; background:var(--progress); transition:width .06s linear }
 .segment.done .segment-fill{ width:100% }
 
-.viewer-inner{ touch-action: pan-y; }
+.viewer-inner{ touch-action: pan-y; } /* allow our horizontal swipe handler */
 .stories-toolbar{
   display:flex; justify-content:flex-end; gap:8px; margin-bottom:8px;
 }
@@ -199,18 +199,24 @@ body{
   gap: 12px;
 }
 /* ===== Overrides: desktop stays desktop; mobile only on phones ===== */
+
+/* Phone layout (≤560px): hide desktop links, show hamburger */
 @media (max-width: 560px){
   .nav-links{ display: none !important; }
   .hamb{ display: inline-grid !important; }
 }
+
+/* Tablet & desktop (>560px): show desktop links, hide hamburger */
 @media (min-width: 561px){
   .nav-links{ display: flex !important; }
   .hamb{ display: none !important; }
 }
-/* Optional desktop width bump */
+
+/* Optional: make desktop content a bit wider (pick one and keep it) */
 /* .hero, .shell { width: min(1200px, 100% - 32px); } */
 /* .hero, .shell { width: min(1280px, 100% - 32px); } */
 /* .hero, .shell { width: min(1440px, 100% - 32px); } */
+
 
 .contact-card{
   display: flex; align-items: center; gap: 12px;
@@ -238,6 +244,5 @@ body{
 /* scroll-reveal animation */
 .reveal{ opacity: 0; transform: translateY(14px); }
 .reveal.reveal-in{ opacity: 1; transform: none; transition: opacity .5s ease, transform .5s ease; }
-
 /* We no longer need to offset the page for a fixed navbar */
 body { padding-top: 0; }   /* was: padding-top: var(--navH); */
