@@ -1,0 +1,17 @@
+.ticker{
+  position: sticky; top: var(--navH); z-index: 900;
+  background: linear-gradient(90deg, rgba(122,162,255,.16), rgba(127,91,255,.16));
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+  height: var(--tickerH);
+}
+.ticker-row{
+  display:flex; align-items:center; gap:22px; height: var(--tickerH);
+  white-space:nowrap; animation: slide 22s linear infinite; will-change: transform;
+  padding-left: 12px;
+}
+.ticker:hover .ticker-row{ animation-play-state: paused; }
+.ticker-item{ display:inline-flex; align-items:center; gap:8px; opacity:.95; font-size:13px; }
+.ticker-bullet{ width:6px; height:6px; border-radius:999px; background:#fff; opacity:.9; box-shadow:0 0 6px #fff8; }
+@keyframes slide{ 0%{ transform:translateX(0) } 100%{ transform:translateX(-50%) } }

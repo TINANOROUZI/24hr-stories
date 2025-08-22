@@ -1,0 +1,100 @@
+.navbar{
+  position: fixed; top:0; left:0; right:0; z-index:1000;
+  backdrop-filter: blur(10px) saturate(120%);
+  background: rgba(10,14,30,.56);
+  border-bottom:1px solid rgba(255,255,255,.12);
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+.nav-inner{
+  width:min(1060px,100% - 32px);
+  height:var(--navH); margin:0 auto;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.brand{ display:inline-flex; align-items:center; gap:10px; font-weight:800; }
+.brand-link{ color:#eaf0ff; text-decoration:none; letter-spacing:.2px; }
+.brand .dot{
+  width:10px; height:10px; border-radius:50%;
+  background:linear-gradient(135deg,#7aa2ff,#7f5bff);
+  box-shadow:0 0 16px #7aa2ff90; animation:ping 2.6s ease-in-out infinite;
+}
+@keyframes ping{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.25);opacity:1}}
+
+.nav-links{ display:flex; align-items:center; gap:20px; }
+.nav-links a{
+  text-decoration:none; color:#eaf0ff; opacity:.92;
+  padding:8px 12px; border-radius:10px;
+  transition:opacity .15s, transform .15s, background .2s;
+  font-weight:600; font-size:14.5px;
+}
+.nav-links a:hover{ opacity:1; background:rgba(255,255,255,.07); transform:translateY(-1px); }
+
+/* Home chip look (optional) */
+.nav-links a.home-btn{
+  background: linear-gradient(135deg,#7aa2ff,#7f5bff);
+  color:#fff !important;
+  box-shadow: 0 6px 18px rgba(127,91,255,.35);
+}
+.nav-links a.home-btn:hover{ transform: translateY(-1px) scale(1.02); }
+
+/* Hamburger */
+.hamb{
+  display:none; position:relative; width:42px; height:42px;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:12px; background:rgba(255,255,255,.06); cursor:pointer;
+}
+.hamb span, .hamb::before, .hamb::after{
+  content:""; position:absolute; left:10px; right:10px; height:2px; background:#eaf0ff;
+  transition: transform .2s, top .2s, opacity .2s;
+}
+.hamb span{ top:20px } .hamb::before{ top:13px } .hamb::after{ top:27px }
+.hamb.active span{ opacity:0 }
+.hamb.active::before{ top:20px; transform:rotate(45deg) }
+.hamb.active::after{ top:20px; transform:rotate(-45deg) }
+
+/* Drawer overlay above everything */
+.drawer{
+  position:fixed; inset:0; background:rgba(5,7,16,.55);
+  backdrop-filter: blur(4px); z-index:3000; display:none;
+}
+.drawer.open{ display:block; }
+
+/* Panel */
+.drawer-panel{
+  position:absolute; right:0; top:0; bottom:0; width:min(84vw,340px);
+  background:rgba(12,16,36,.95); border-left:1px solid rgba(255,255,255,.12);
+  transform:translateX(100%); transition:transform .22s;
+  display:flex; flex-direction:column; padding:18px 18px 24px;
+}
+.drawer.open .drawer-panel{ transform:translateX(0) }
+
+/* Drawer links block + spacing control */
+#drawerLinks{ margin-top:56px; display:grid; gap:10px; }
+
+.drawer a{ color:#eaf0ff; text-decoration:none; padding:12px 10px; border-radius:10px; display:block; opacity:.95; }
+.drawer a:hover{ background:rgba(255,255,255,.08); opacity:1; }
+
+/* Close X drawn by CSS lines */
+.drawer-close{
+  position:absolute; top:10px; right:10px;
+  width:38px; height:38px; border:1px solid rgba(255,255,255,.22);
+  border-radius:12px; background:rgba(255,255,255,.12); cursor:pointer;
+  display:block; z-index:1;
+}
+.drawer-close::before,
+.drawer-close::after{
+  content:""; position:absolute; left:9px; right:9px; top:18px; height:2px; background:#fff;
+}
+.drawer-close::before{ transform:rotate(45deg) }
+.drawer-close::after{ transform:rotate(-45deg) }
+.drawer-close:hover{ background:rgba(255,255,255,.18) }
+.drawer-close:active{ transform:scale(.96) }
+
+/* Make navbar scroll away with the page (not sticky/fixed) */
+.navbar{
+  position: relative;   /* was: fixed */
+  inset: auto;          /* clear the fixed positioning */
+}
+
+
+
+@media (max-width:860px){ .nav-links{ display:none } .hamb{ display:inline-block } }

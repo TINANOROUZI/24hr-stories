@@ -1,0 +1,56 @@
+/* Contact page-only styles (uses site variables) */
+.page-wrap{ width:min(900px,100% - 32px); margin:34px auto 28px; }
+.contact-hero{ margin:10px 0 18px; text-transform:uppercase; letter-spacing:.12em; font-weight:800; opacity:.9; }
+
+.contact-card{
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  backdrop-filter: blur(10px) saturate(120%); box-shadow:0 30px 80px rgba(0,0,0,.35);
+  padding:18px;
+}
+
+.contact-grid{ display:grid; grid-template-columns: 1fr; gap:18px; }
+@media (min-width: 860px){ .contact-grid{ grid-template-columns: 1.1fr .9fr; } }
+
+/* form controls */
+.form-group{ display:flex; flex-direction:column; gap:8px; }
+.form-group + .form-group{ margin-top:12px; }
+label{ font-size:13px; color:var(--muted); }
+input[type="text"], input[type="email"], textarea{
+  width:100%; padding:14px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.14);
+  background:#1a2140; color:var(--fg); outline:none; transition:border-color .2s, box-shadow .2s;
+}
+textarea{ min-height:150px; resize:vertical; }
+input::placeholder, textarea::placeholder{ color:#9aa6c7; opacity:.85; }
+input:focus, textarea:focus{
+  border-color: color-mix(in oklab, var(--ring) 45%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 25%, transparent);
+}
+.btn-send{
+  display:inline-block; margin-top:10px; padding:10px 16px; border-radius:12px; font-weight:700;
+  color:#fff; border:1px solid rgba(255,255,255,.25);
+  background:linear-gradient(135deg,#7aa2ff,#7f5bff); cursor:pointer;
+  box-shadow:0 10px 26px rgba(127,91,255,.35); transition:transform .12s;
+}
+.btn-send:active{ transform:scale(.98) }
+
+/* info side */
+.aside{
+  background: rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:14px; height:100%;
+}
+.aside p{ margin:0 0 10px; color:var(--muted); }
+
+.contact-list{ display:grid; gap:10px; margin-top:10px; }
+.contact-row{ display:flex; align-items:center; gap:10px; }
+.icon{
+  width:38px; height:38px; border-radius:12px; display:grid; place-items:center;
+  background: linear-gradient(135deg,#7aa2ff33,#7f5bff33);
+  border:1px solid rgba(255,255,255,.18);
+}
+.icon svg{ width:20px; height:20px; fill:currentColor; opacity:.9 }
+.contact-row a{ color:var(--fg); text-decoration:none; }
+.contact-row a:hover{ text-decoration:underline; }
+
+/* animate in */
+.reveal{ opacity:0; transform:translateY(14px); }
+.reveal.reveal-in{ opacity:1; transform:none; transition: opacity .5s ease, transform .5s ease; }

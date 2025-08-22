@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0f23" />
+  <title>How It Works — 24hr Stories</title>
+
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="../navbar.css" />
+  <link rel="stylesheet" href="../ticker.css" />
+</head>
+<body>
+  <div id="app-navbar"></div>
+  <div id="ticker-root"></div>
+
+  <div class="bg"></div>
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+
+  <div class="viewport-center">
+    <header class="hero">
+      <h1>How 24hr Stories Work</h1>
+      <p class="sub">Create, watch, and move on — your stories disappear automatically after a day.</p>
+    </header>
+
+    <main class="shell">
+      <section class="stories-wrap pop" style="display:grid; gap:16px;">
+        <figure style="margin:0; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,.14);">
+          <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1600&auto=format&fit=crop"
+               alt="People recording with phones at a concert"
+               style="width:100%; height:340px; object-fit:cover;">
+        </figure>
+
+        <article style="display:grid; gap:12px; line-height:1.65;">
+          <h2 style="margin:0;">The flow</h2>
+          <ol style="margin:0; padding-left:18px;">
+            <li><strong>Add a story:</strong> Click <em>+ Add a Story</em> or the + bubble and choose a photo or video.</li>
+            <li><strong>Full-screen viewer:</strong> Clean playback with a progress bar at the top.</li>
+            <li><strong>Navigate:</strong> Swipe on mobile, use arrow buttons, or press ← →.</li>
+            <li><strong>Pause:</strong> Press & hold (or click & hold) to pause the current story.</li>
+            <li><strong>Auto-expire:</strong> Each story lives locally and is removed after 24 hours.</li>
+          </ol>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script src="../navbar.js" defer></script>
+  <script src="../ticker.js" defer></script>
+</body>
+</html>

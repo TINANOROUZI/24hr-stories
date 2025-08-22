@@ -1,0 +1,38 @@
+:root{
+  --card:rgba(255,255,255,.07);
+  --border:rgba(255,255,255,.18);
+  --ring:#86a3ff;
+  --progress:#eaf0ff;
+  --progress-dim:#3d4a6e;
+}
+body{ letter-spacing:.1px; font-feature-settings:"liga","kern"; }
+.hero h1{
+  background: linear-gradient(180deg,#fff, #cfe0ff 70%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.stories-wrap{
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  background:
+    radial-gradient(120% 100% at 10% 0%, rgba(255,255,255,.06), transparent 60%),
+    var(--card);
+  box-shadow: 0 20px 50px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.btn-secondary{
+  background: linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+  border:1px solid rgba(255,255,255,.22);
+  transition: transform .12s ease, background .2s, border-color .2s;
+}
+.btn-secondary:hover{ transform: translateY(-1px); }
+.bubble{
+  box-shadow: 0 10px 28px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.08);
+  transition: transform .18s ease, box-shadow .2s ease;
+}
+.bubble:hover{ transform: translateY(-3px); }
+.bubble.add{
+  border-style:dashed;
+  background: radial-gradient(60% 80% at 40% 20%, rgba(127,91,255,.18), transparent 60%), rgba(255,255,255,.05);
+}
+.segment{ height:5px; background: linear-gradient(180deg, #2d3a62, #1f2a4b); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.segment-fill{ background: linear-gradient(90deg,#7aa2ff,#7f5bff); box-shadow:0 0 10px rgba(127,91,255,.45); }
+.viewer-close, .nav{ backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.2); }
+.site-footer .rule{ background: linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent); }
