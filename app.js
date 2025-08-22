@@ -26,12 +26,17 @@ function load() {
     else expired.push({ ...s, archivedAt: t });
   }
 
+  // Move expired into archive (prepend so newest archive first)
   if (expired.length) {
     const arch = loadArchive();
-    saveArchive([...expired, ...arch]); // newest archived first
+    const merged = [...expired, ...arch];
+    saveArchive(merged);
   }
 
-  if (fresh.length !== arr.length) localStorage.setItem(LS_KEY, JSON.stringify(fresh));
+  // Persist fresh back to active key
+  if (fresh.length !== arr.length) {
+    localStorage.setItem(LS_KEY, JSON.stringify(fresh));
+  }
   return fresh;
 }
 function save(items) {
@@ -43,8 +48,7 @@ const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 /* ========= Refs ========= */
 const strip       = document.getElementById("storiesStrip");
 const emptyHint   = document.getElementById("emptyHint");
-const fileInput   = document.getElementById("fileInput");         // hidden fallback
-const bubbleInput = document.getElementById("addBubbleInput");    // visible overlay inside bubble
+const fileInput   = document.getElementById("fileInput");   // inside the + bubble
 
 const viewer      = document.getElementById("viewer");
 const progressRow = document.getElementById("progressRow");
@@ -52,6 +56,7 @@ const closeBtn    = document.getElementById("closeBtn");
 const prevBtn     = document.getElementById("prevBtn");
 const nextBtn     = document.getElementById("nextBtn");
 const imgEl       = document.getElementById("viewerImage");
+
 const archiveBtn  = document.getElementById("archiveBtn");
 
 let videoEl = null;
@@ -60,11 +65,11 @@ let videoEl = null;
 let stories        = load();          // active
 let archiveStories = loadArchive();   // archived
 let currentIndex   = 0;
-let useArchive     = false;
+let useArchive     = false;           // which list is in viewer
 let timer = null;
 let progressTimer = null;
 
-/* ========= Helpers ========= */
+/* Helpers */
 const items = () => (useArchive ? archiveStories : stories);
 
 function setEmptyHint() {
@@ -76,38 +81,6 @@ function toDataURL(file) {
   return new Promise((res, rej) => {
     const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file);
   });
-}
-
-/* ---- size helper for dataURLs ---- */
-function base64Bytes(dataURL){
-  const i = dataURL.indexOf(",") + 1;
-  const len = dataURL.length - i;
-  let bytes = Math.floor(len * 3/4);
-  if (dataURL.endsWith("==")) bytes -= 2;
-  else if (dataURL.endsWith("=")) bytes -= 1;
-  return bytes;
-}
-
-/* ---- lightweight image compression so photos fit localStorage ---- */
-async function fileToBitmap(file){
-  const buf = await file.arrayBuffer();
-  return await createImageBitmap(new Blob([buf]));
-}
-async function compressImageFile(file, maxW = 1280, quality = 0.82){
-  // Try bitmap → canvas. If decode fails (e.g., HEIC), fallback to raw reader.
-  try{
-    const img = await fileToBitmap(file);
-    const scale = Math.min(1, maxW / img.width);
-    const w = Math.max(1, Math.round(img.width * scale));
-    const h = Math.max(1, Math.round(img.height * scale));
-    const canvas = document.createElement("canvas");
-    canvas.width = w; canvas.height = h;
-    const ctx = canvas.getContext("2d", { alpha:false });
-    ctx.drawImage(img, 0, 0, w, h);
-    return canvas.toDataURL("image/jpeg", quality);
-  }catch{
-    return await toDataURL(file); // might be large; we’ll size-check later
-  }
 }
 
 /* ========= Render top strip (active stories only) ========= */
@@ -132,9 +105,9 @@ function renderStrip() {
 
   setEmptyHint();
 }
-window.renderStrip = renderStrip;
+window.renderStrip = renderStrip; // external access if needed
 
-/* ========= Viewer ========= */
+/* ========= Viewer (works for active OR archive) ========= */
 function ensureVideoEl() {
   if (videoEl) return videoEl;
   const v = document.createElement("video");
@@ -200,51 +173,26 @@ function closeViewer(){
   clearTimers(); viewer.classList.remove("open");
   setTimeout(()=>viewer.setAttribute("hidden",""),200);
   if (videoEl){ videoEl.pause(); videoEl.src=""; }
-  useArchive = false;
+  useArchive = false; // reset to normal after closing
 }
 function prev(){ clearTimers(); const L = items().length; currentIndex = (currentIndex - 1 + L) % L; showCurrent(); }
 function next(){ clearTimers(); const L = items().length; currentIndex = (currentIndex + 1) % L; showCurrent(); }
 
-/* ========= Add (compress large images; videos must be small) ========= */
+/* ========= Add (base64 in localStorage; expiry handled by load()) ========= */
 async function handleFiles(files){
-  const MAX_BYTES = 4.5 * 1024 * 1024; // ~4.5MB per item
-
+  const MAX_MB = 4.5, maxBytes = MAX_MB * 1024 * 1024;
   for (const f of files) {
-    const kind =
-      f.type.startsWith("video/") ? "video" :
-      f.type.startsWith("image/") ? "image" : "other";
+    if (f.size > maxBytes) { alert(`"${f.name}" is larger than ${MAX_MB}MB and was skipped.`); continue; }
+    const kind = f.type.startsWith("video/") ? "video" : f.type.startsWith("image/") ? "image" : "other";
     if (kind === "other") continue;
-
-    let data;
-
-    if (kind === "image") {
-      // compress in steps until it fits
-      data = await compressImageFile(f, 1280, 0.82);
-      if (base64Bytes(data) > MAX_BYTES) data = await compressImageFile(f, 1024, 0.76);
-      if (base64Bytes(data) > MAX_BYTES) data = await compressImageFile(f, 800, 0.72);
-      if (base64Bytes(data) > MAX_BYTES) {
-        alert(`"${f.name}" is still too large after compression and was skipped.`);
-        continue;
-      }
-    } else {
-      // videos: keep your limit; ask user to trim if too big
-      if (f.size > MAX_BYTES) {
-        alert(`"${f.name}" is larger than 4.5MB and was skipped. Use a shorter clip.`);
-        continue;
-      }
-      data = await toDataURL(f);
-    }
-
+    const data = await toDataURL(f);
     stories.unshift({ id: uid(), kind, data, createdAt: now() });
   }
-
-  save(stories);
-  renderStrip();
-  setEmptyHint();
+  save(stories); renderStrip(); setEmptyHint();
 }
 window.handleAddStories = handleFiles;
 
-/* ========= Swipe ========= */
+/* ========= Swipe gestures (existing) ========= */
 function enableSwipe(){
   const root = viewer?.querySelector(".viewer-inner");
   if (!root) return;
@@ -276,25 +224,30 @@ function enableSwipe(){
 
 /* ========= Bind UI ========= */
 function bindEvents(){
-  // 1) The overlay input inside the bubble (iOS-friendly)
-  bubbleInput?.addEventListener("change", async (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length) await handleFiles(files);
-    bubbleInput.value = "";
+  // + button already in DOM; use the offscreen input for reliability (iOS)
+  const addBtn = document.getElementById("addBubble");
+  const openPicker = (e) => { e.preventDefault(); e.stopPropagation(); fileInput?.click(); };
+  ["pointerdown","click","keydown"].forEach(evt=>{
+    addBtn?.addEventListener(evt, (e)=>{
+      if (evt==="keydown" && e.key !== "Enter" && e.key !== " ") return;
+      openPicker(e);
+    });
   });
 
-  // 2) Keep your hidden input path for Android/Desktop & old code
-  fileInput?.addEventListener("change", async (e) => {
+  fileInput?.addEventListener("change", (e) => {
     const files = Array.from(e.target.files || []);
-    if (files.length) await handleFiles(files);
-    fileInput.value = "";
+    if (!files.length) return;
+    handleFiles(files).then(()=>{ fileInput.value=""; });
   });
 
-  // 3) Archive button opens archive in viewer
+  // Archive button -> open viewer in archive mode
   archiveBtn?.addEventListener("click", () => {
-    archiveStories = loadArchive();
-    if (!archiveStories.length) { alert("No archived stories yet."); return; }
-    openViewer(0, true);
+    archiveStories = loadArchive(); // refresh (maybe new items moved since load)
+    if (!archiveStories.length) {
+      alert("No archived stories yet.");
+      return;
+    }
+    openViewer(0, true); // start from most recent archived
   });
 
   closeBtn?.addEventListener("click", closeViewer);
@@ -315,6 +268,7 @@ function bindEvents(){
 
 /* ========= Init ========= */
 document.addEventListener("DOMContentLoaded", () => {
+  // sweep happened in load(); archiveStories already loaded
   renderStrip();
   bindEvents();
   setEmptyHint();
