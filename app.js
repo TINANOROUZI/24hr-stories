@@ -48,7 +48,7 @@ const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 /* ========= Refs ========= */
 const strip       = document.getElementById("storiesStrip");
 const emptyHint   = document.getElementById("emptyHint");
-const fileInput   = document.getElementById("fileInput");   // inside the + bubble
+const fileInput   = document.getElementById("fileInput");   // hidden input at bottom
 
 const viewer      = document.getElementById("viewer");
 const progressRow = document.getElementById("progressRow");
@@ -69,7 +69,7 @@ let useArchive     = false;           // which list is in viewer
 let timer = null;
 let progressTimer = null;
 
-/* Helpers */
+/* ========= Helpers ========= */
 const items = () => (useArchive ? archiveStories : stories);
 
 function setEmptyHint() {
@@ -81,6 +81,75 @@ function toDataURL(file) {
   return new Promise((res, rej) => {
     const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file);
   });
+}
+
+/* ---- size helper for dataURLs ---- */
+function base64Bytes(dataURL){
+  const i = dataURL.indexOf(",") + 1;
+  const len = dataURL.length - i;
+  let bytes = Math.floor(len * 3/4);
+  if (dataURL.endsWith("==")) bytes -= 2;
+  else if (dataURL.endsWith("=")) bytes -= 1;
+  return bytes;
+}
+
+/* ---- lightweight image compression so photos fit localStorage ---- */
+async function fileToBitmap(file){
+  const buf = await file.arrayBuffer();
+  return await createImageBitmap(new Blob([buf]));
+}
+async function compressImageFile(file, maxW = 1280, quality = 0.82){
+  try{
+    const img = await fileToBitmap(file);
+    const scale = Math.min(1, maxW / img.width);
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d", { alpha:false });
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", quality);
+  }catch{
+    // fallback to plain FileReader if something goes wrong
+    return await new Promise((res, rej) => {
+      const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file);
+    });
+  }
+}
+
+/* ---- iOS detection + helper to open a visible input over the + bubble ---- */
+const isIOS = () =>
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+
+function openIOSPicker({ camera = false } = {}){
+  const add = document.getElementById("addBubble");
+  if (!add) return;
+  const temp = document.createElement("input");
+  temp.type = "file";
+  temp.accept = "image/*,video/*";
+  temp.multiple = true;
+  if (camera) temp.setAttribute("capture", "environment");
+
+  // make it *visible* and clickable over the bubble
+  Object.assign(temp.style, {
+    position: "absolute", inset: "0",
+    width: "100%", height: "100%",
+    opacity: "0", cursor: "pointer", zIndex: "3"
+  });
+  add.appendChild(temp);
+
+  temp.addEventListener("change", async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length) await handleFiles(files);
+    add.removeChild(temp);
+  }, { once:true });
+
+  // open chooser (allowed because the input is visible)
+  temp.click();
+
+  // safety clean-up if user cancels
+  setTimeout(() => { if (temp.parentNode) add.removeChild(temp); }, 2500);
 }
 
 /* ========= Render top strip (active stories only) ========= */
@@ -180,15 +249,40 @@ function next(){ clearTimers(); const L = items().length; currentIndex = (curren
 
 /* ========= Add (base64 in localStorage; expiry handled by load()) ========= */
 async function handleFiles(files){
-  const MAX_MB = 4.5, maxBytes = MAX_MB * 1024 * 1024;
+  const MAX_BYTES = 4.5 * 1024 * 1024; // ~4.5MB per item
+
   for (const f of files) {
-    if (f.size > maxBytes) { alert(`"${f.name}" is larger than ${MAX_MB}MB and was skipped.`); continue; }
-    const kind = f.type.startsWith("video/") ? "video" : f.type.startsWith("image/") ? "image" : "other";
+    const kind =
+      f.type.startsWith("video/") ? "video" :
+      f.type.startsWith("image/") ? "image" : "other";
     if (kind === "other") continue;
-    const data = await toDataURL(f);
+
+    let data;
+
+    if (kind === "image") {
+      // compress in steps until it fits
+      data = await compressImageFile(f, 1280, 0.82);
+      if (base64Bytes(data) > MAX_BYTES) data = await compressImageFile(f, 1024, 0.76);
+      if (base64Bytes(data) > MAX_BYTES) data = await compressImageFile(f, 800, 0.72);
+      if (base64Bytes(data) > MAX_BYTES) {
+        alert(`"${f.name}" is still too large after compression and was skipped.`);
+        continue;
+      }
+    } else {
+      // videos: keep your limit; ask user to trim if too big
+      if (f.size > MAX_BYTES) {
+        alert(`"${f.name}" is larger than 4.5MB and was skipped. Use a shorter clip.`);
+        continue;
+      }
+      data = await toDataURL(f);
+    }
+
     stories.unshift({ id: uid(), kind, data, createdAt: now() });
   }
-  save(stories); renderStrip(); setEmptyHint();
+
+  save(stories);
+  renderStrip();
+  setEmptyHint();
 }
 window.handleAddStories = handleFiles;
 
@@ -224,25 +318,48 @@ function enableSwipe(){
 
 /* ========= Bind UI ========= */
 function bindEvents(){
-  // + button already in DOM; use the offscreen input for reliability (iOS)
   const addBtn = document.getElementById("addBubble");
-  const openPicker = (e) => { e.preventDefault(); e.stopPropagation(); fileInput?.click(); };
+
+  // Use iOS-safe overlay input on iOS; hidden input elsewhere
+  const openPicker = (e, {camera = false} = {}) => {
+    e.preventDefault(); e.stopPropagation();
+    if (isIOS()) {
+      openIOSPicker({ camera });
+    } else if (fileInput) {
+      if (camera) fileInput.setAttribute("capture", "environment");
+      else fileInput.removeAttribute("capture");
+      fileInput.click();
+      if (camera) setTimeout(() => fileInput.removeAttribute("capture"), 0);
+    }
+  };
+
   ["pointerdown","click","keydown"].forEach(evt=>{
     addBtn?.addEventListener(evt, (e)=>{
       if (evt==="keydown" && e.key !== "Enter" && e.key !== " ") return;
-      openPicker(e);
+      // regular tap
+      if (evt !== "pointerdown") openPicker(e, { camera:false });
     });
   });
 
-  fileInput?.addEventListener("change", (e) => {
+  // long-press (~600ms) → Camera
+  let t;
+  addBtn?.addEventListener("pointerdown", (e) => {
+    t = setTimeout(() => openPicker(e, { camera:true }), 600);
+  });
+  ["pointerup","pointercancel","pointerleave"].forEach(ev =>
+    addBtn?.addEventListener(ev, () => clearTimeout(t), { passive:true })
+  );
+
+  // listen to hidden input changes as well
+  fileInput?.addEventListener("change", async (e) => {
     const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    handleFiles(files).then(()=>{ fileInput.value=""; });
+    if (files.length) await handleFiles(files);
+    fileInput.value = "";
   });
 
   // Archive button -> open viewer in archive mode
   archiveBtn?.addEventListener("click", () => {
-    archiveStories = loadArchive(); // refresh (maybe new items moved since load)
+    archiveStories = loadArchive(); // refresh
     if (!archiveStories.length) {
       alert("No archived stories yet.");
       return;
@@ -268,7 +385,6 @@ function bindEvents(){
 
 /* ========= Init ========= */
 document.addEventListener("DOMContentLoaded", () => {
-  // sweep happened in load(); archiveStories already loaded
   renderStrip();
   bindEvents();
   setEmptyHint();
