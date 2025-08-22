@@ -1,122 +1,275 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0b0f23" />
-  <title>24hr Stories — Glass</title>
+/* ========= Storage (24h + Archive) ========= */
+const LS_KEY   = "stories_v2";
+const LS_ARCH  = "stories_archive_v1";
+const DAY_MS   = 24 * 60 * 60 * 1000;
+const now      = () => Date.now();
 
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+function loadArchive() {
+  const raw = localStorage.getItem(LS_ARCH);
+  try { return raw ? JSON.parse(raw) : []; } catch { return []; }
+}
+function saveArchive(items) {
+  try { localStorage.setItem(LS_ARCH, JSON.stringify(items)); } catch {}
+}
 
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="navbar.css" />
-</head>
-<body>
-  <!-- Navbar mount -->
-  <div id="app-navbar"></div>
+/** Load active stories; move any expired (>24h) to Archive instead of deleting */
+function load() {
+  const raw = localStorage.getItem(LS_KEY);
+  let arr = [];
+  try { arr = raw ? JSON.parse(raw) : []; } catch {}
 
+  const fresh = [];
+  const expired = [];
+  const t = now();
+  for (const s of arr) {
+    if (t - (s.createdAt || 0) < DAY_MS) fresh.push(s);
+    else expired.push({ ...s, archivedAt: t });
+  }
 
-  <!-- Background -->
-  <div class="bg"></div>
-  <div class="bg-orb orb-a"></div>
-  <div class="bg-orb orb-b"></div>
+  // Move expired into archive (prepend so newest archive first)
+  if (expired.length) {
+    const arch = loadArchive();
+    const merged = [...expired, ...arch];
+    saveArchive(merged);
+  }
 
-  <!-- Main content area -->
-  <div class="viewport-center">
-    <header class="hero">
-      <h1>24hr Story Feature</h1>
-      <p class="sub">Ephemeral, swipeable, and clean — stories vanish after 24 hours.</p>
-    </header>
+  // Persist fresh back to active key
+  if (fresh.length !== arr.length) {
+    localStorage.setItem(LS_KEY, JSON.stringify(fresh));
+  }
+  return fresh;
+}
+function save(items) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(items)); }
+  catch { alert("Storage full. Remove some stories."); }
+}
+const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
-    <main class="shell" id="stories">
-      <section class="stories-wrap pop">
-        <div class="stories-toolbar">
-          <button id="archiveBtn" class="btn-secondary" type="button">Archive</button>
-        </div>
+/* ========= Refs ========= */
+const strip       = document.getElementById("storiesStrip");
+const emptyHint   = document.getElementById("emptyHint");
+const fileInput   = document.getElementById("fileInput");   // inside the + bubble
 
-        <div id="storiesStrip" class="stories-strip" aria-label="Stories carousel">
-          <!-- + Add bubble (first child) -->
-          <button id="addBubble" class="bubble add" type="button" aria-label="Add a story">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>
-            </svg>
-          </button>
-          <!-- story bubbles will be appended here by app.js -->
-        </div>
-      </section>
+const viewer      = document.getElementById("viewer");
+const progressRow = document.getElementById("progressRow");
+const closeBtn    = document.getElementById("closeBtn");
+const prevBtn     = document.getElementById("prevBtn");
+const nextBtn     = document.getElementById("nextBtn");
+const imgEl       = document.getElementById("viewerImage");
 
-      <section class="empty-hint pop" id="emptyHint">
-        <p>No stories yet. Tap the <strong>+</strong> to add your first story.</p>
-      </section>
-    </main>
-  </div><!-- /.viewport-center -->
-  </div><!-- /.viewport-center -->
+const archiveBtn  = document.getElementById("archiveBtn");
 
-<!-- Contact -->
-<section id="contact" class="contact-wrap reveal">
-  <div class="contact-inner">
-    <h2 class="contact-title">Let’s talk</h2>
-    <p class="contact-text">
-      Questions, collabs, or feature requests? I’d love to hear from you.
-      Email or call me and I’ll get back within 24 hours.
-    </p>
+let videoEl = null;
 
-    <div class="contact-cards">
-      <a class="contact-card" href="mailto:you@example.com">
-        <span class="icon" aria-hidden="true">
-          <!-- mail icon -->
-          <svg viewBox="0 0 24 24"><path d="M4 6h16a2 2 0 0 1 2 2v.3l-10 6.5L2 8.3V8a2 2 0 0 1 2-2Zm0 5.7 8 5.2 8-5.2V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4.3Z"/></svg>
-        </span>
-        <div class="info">
-          <strong>Email</strong>
-          <span>you@example.com</span>
-        </div>
-      </a>
+/* ========= State ========= */
+let stories        = load();          // active
+let archiveStories = loadArchive();   // archived
+let currentIndex   = 0;
+let useArchive     = false;           // which list is in viewer
+let timer = null;
+let progressTimer = null;
 
-      <a class="contact-card" href="tel:+393331234567">
-        <span class="icon" aria-hidden="true">
-          <!-- phone icon -->
-          <svg viewBox="0 0 24 24"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1.5 1.5 0 0 1 1.5-.36c1.63.54 3.39.84 5.2.84.83 0 1.5.67 1.5 1.5V21a3 3 0 0 1-3 3C9.94 24 0 14.06 0 3a3 3 0 0 1 3-3h2.82C6.65 0 7.32.67 7.32 1.5c0 1.81.3 3.57.84 5.2.2.52.08 1.12-.36 1.55L6.6 10.8Z"/></svg>
-        </span>
-        <div class="info">
-          <strong>Phone</strong>
-          <span>+39 333 123 4567</span>
-        </div>
-      </a>
-    </div>
-  </div>
-</section>
+/* Helpers */
+const items = () => (useArchive ? archiveStories : stories);
 
-<!-- Footer at the end of the page -->
-<footer class="site-footer">
-  <div class="rule"></div>
-  <p>© <span id="year">2025</span> • 24hr Stories</p>
-</footer>
+function setEmptyHint() {
+  if (!emptyHint) return;
+  emptyHint.style.display = stories.length ? "none" : "flex";
+}
+function el(tag, cls) { const n = document.createElement(tag); if (cls) n.className = cls; return n; }
+function toDataURL(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file);
+  });
+}
 
+/* ========= Render top strip (active stories only) ========= */
+function renderStrip() {
+  if (!strip) return;
+  // keep first child (the + bubble)
+  while (strip.children.length > 1) strip.removeChild(strip.lastElementChild);
 
+  stories.forEach((s, i) => {
+    const b = el("button", "bubble");
+    b.type = "button";
+    b.setAttribute("aria-label", "Open story");
+    b.addEventListener("click", () => openViewer(i, false));
 
-  <!-- Hidden-but-clickable file input (keep present for iOS Safari) -->
-  <!-- before: had capture="environment" -->
-<input
-  id="fileInput"
-  class="visually-hidden-file"
-  type="file"
-  accept="image/*,video/*"
-  multiple
-  aria-hidden="true"
-  tabindex="-1"
-/>
+    if (s.kind === "image") {
+      const img = el("img"); img.src = s.data; img.alt = "Story"; b.appendChild(img);
+    } else {
+      const vid = el("video"); vid.src = s.data; vid.muted = true; vid.playsInline = true; vid.preload = "metadata"; b.appendChild(vid);
+    }
+    strip.appendChild(b);
+  });
 
-  <!-- Scripts -->
-  <script src="app.js" defer></script>
-  <script src="add-bubble.js" defer></script>
-  <script src="navbar.js" defer></script>
+  setEmptyHint();
+}
+window.renderStrip = renderStrip; // external access if needed
 
-  <!-- Auto-update footer year -->
-  <script>
-    const y = document.getElementById("year");
-    if (y) y.textContent = new Date().getFullYear();
-  </script>
-</body>
-</html>
+/* ========= Viewer (works for active OR archive) ========= */
+function ensureVideoEl() {
+  if (videoEl) return videoEl;
+  const v = document.createElement("video");
+  v.style.width = "100%"; v.style.height = "100%"; v.style.objectFit = "contain";
+  v.setAttribute("playsinline",""); v.setAttribute("webkit-playsinline","");
+  v.controls = false; v.muted = false; v.preload = "auto";
+  videoEl = v; return v;
+}
+function clearTimers(){ if (timer){clearTimeout(timer); timer=null;} if (progressTimer){clearInterval(progressTimer); progressTimer=null;} }
+function buildProgress(){
+  progressRow.innerHTML = "";
+  items().forEach((_, i) => {
+    const seg = el("div","segment"); const fill = el("div","segment-fill");
+    seg.appendChild(fill); progressRow.appendChild(seg); if (i < currentIndex) seg.classList.add("done");
+  });
+}
+function setProgress(pct){
+  const seg = progressRow.children[currentIndex]; if (!seg) return;
+  const fill = seg.querySelector(".segment-fill"); if (fill) fill.style.width = `${pct}%`;
+}
+function showCurrent(){
+  clearTimers(); if (!viewer) return;
+  const list = items();
+  const s = list[currentIndex]; if (!s) return;
+
+  if (s.kind === "image") {
+    if (videoEl?.parentNode) videoEl.parentNode.removeChild(videoEl);
+    imgEl.src = s.data; imgEl.style.display = "block";
+    const D = 3000;
+    const start = performance.now(); setProgress(0);
+    progressTimer = setInterval(() => {
+      const p = Math.min(1,(performance.now()-start)/D); setProgress(p*100);
+      if (p >= 1){ clearInterval(progressTimer); progressTimer = null; }
+    }, 50);
+    timer = setTimeout(next, D);
+  } else {
+    const v = ensureVideoEl(); imgEl.style.display = "none"; imgEl.src = "";
+    if (v.parentNode !== viewer.querySelector(".viewer-inner")) viewer.querySelector(".viewer-inner").appendChild(v);
+    v.src = s.data; v.currentTime = 0; v.play().catch(()=>{}); setProgress(0);
+    const onMeta = () => {
+      clearInterval(progressTimer);
+      progressTimer = setInterval(() => {
+        if (!isFinite(v.duration) || v.duration <= 0) return;
+        setProgress((v.currentTime / v.duration) * 100);
+      }, 80);
+    };
+    v.removeEventListener("loadedmetadata", onMeta);
+    v.addEventListener("loadedmetadata", onMeta, { once:true });
+    const onEnded = () => next();
+    v.removeEventListener("ended", onEnded);
+    v.addEventListener("ended", onEnded, { once:true });
+  }
+  buildProgress();
+}
+function openViewer(i, archiveMode=false){
+  useArchive = !!archiveMode;
+  currentIndex = i;
+  viewer.removeAttribute("hidden");
+  viewer.classList.add("open");
+  showCurrent();
+}
+function closeViewer(){
+  clearTimers(); viewer.classList.remove("open");
+  setTimeout(()=>viewer.setAttribute("hidden",""),200);
+  if (videoEl){ videoEl.pause(); videoEl.src=""; }
+  useArchive = false; // reset to normal after closing
+}
+function prev(){ clearTimers(); const L = items().length; currentIndex = (currentIndex - 1 + L) % L; showCurrent(); }
+function next(){ clearTimers(); const L = items().length; currentIndex = (currentIndex + 1) % L; showCurrent(); }
+
+/* ========= Add (base64 in localStorage; expiry handled by load()) ========= */
+async function handleFiles(files){
+  const MAX_MB = 4.5, maxBytes = MAX_MB * 1024 * 1024;
+  for (const f of files) {
+    if (f.size > maxBytes) { alert(`"${f.name}" is larger than ${MAX_MB}MB and was skipped.`); continue; }
+    const kind = f.type.startsWith("video/") ? "video" : f.type.startsWith("image/") ? "image" : "other";
+    if (kind === "other") continue;
+    const data = await toDataURL(f);
+    stories.unshift({ id: uid(), kind, data, createdAt: now() });
+  }
+  save(stories); renderStrip(); setEmptyHint();
+}
+window.handleAddStories = handleFiles;
+
+/* ========= Swipe gestures (existing) ========= */
+function enableSwipe(){
+  const root = viewer?.querySelector(".viewer-inner");
+  if (!root) return;
+
+  let startX = 0, startY = 0, dx = 0, dy = 0, swiping = false;
+  const THRESH = 40;
+
+  const onStart = (e) => {
+    const t = e.touches ? e.touches[0] : e; startX = t.clientX; startY = t.clientY; dx = dy = 0; swiping = true;
+  };
+  const onMove = (e) => {
+    if (!swiping) return;
+    const t = e.touches ? e.touches[0] : e; dx = t.clientX - startX; dy = t.clientY - startY;
+    if (Math.abs(dx) > Math.abs(dy)) e.preventDefault();
+  };
+  const onEnd = () => {
+    if (!swiping) return;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > THRESH) { dx < 0 ? next() : prev(); }
+    swiping = false;
+  };
+
+  root.addEventListener("touchstart", onStart, { passive:false });
+  root.addEventListener("touchmove",  onMove,  { passive:false });
+  root.addEventListener("touchend",   onEnd,   { passive:true  });
+  root.addEventListener("pointerdown", onStart);
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onEnd);
+}
+
+/* ========= Bind UI ========= */
+function bindEvents(){
+  // + button already in DOM; use the offscreen input for reliability (iOS)
+  const addBtn = document.getElementById("addBubble");
+  const openPicker = (e) => { e.preventDefault(); e.stopPropagation(); fileInput?.click(); };
+  ["pointerdown","click","keydown"].forEach(evt=>{
+    addBtn?.addEventListener(evt, (e)=>{
+      if (evt==="keydown" && e.key !== "Enter" && e.key !== " ") return;
+      openPicker(e);
+    });
+  });
+
+  fileInput?.addEventListener("change", (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    handleFiles(files).then(()=>{ fileInput.value=""; });
+  });
+
+  // Archive button -> open viewer in archive mode
+  archiveBtn?.addEventListener("click", () => {
+    archiveStories = loadArchive(); // refresh (maybe new items moved since load)
+    if (!archiveStories.length) {
+      alert("No archived stories yet.");
+      return;
+    }
+    openViewer(0, true); // start from most recent archived
+  });
+
+  closeBtn?.addEventListener("click", closeViewer);
+  prevBtn?.addEventListener("click", prev);
+  nextBtn?.addEventListener("click", next);
+
+  window.addEventListener("keydown", (e) => {
+    if (viewer.hasAttribute("hidden")) return;
+    if (e.key === "Escape") closeViewer();
+    if (e.key === "ArrowLeft") prev();
+    if (e.key === "ArrowRight") next();
+  });
+
+  viewer?.addEventListener("click", (e) => { if (e.target === viewer) closeViewer(); });
+
+  enableSwipe();
+}
+
+/* ========= Init ========= */
+document.addEventListener("DOMContentLoaded", () => {
+  // sweep happened in load(); archiveStories already loaded
+  renderStrip();
+  bindEvents();
+  setEmptyHint();
+});
