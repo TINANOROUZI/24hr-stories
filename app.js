@@ -224,14 +224,36 @@ function enableSwipe(){
 
 /* ========= Bind UI ========= */
 function bindEvents(){
-  // + button already in DOM; use the offscreen input for reliability (iOS)
-  const addBtn = document.getElementById("addBubble");
-  const openPicker = (e) => { e.preventDefault(); e.stopPropagation(); fileInput?.click(); };
-  ["pointerdown","click","keydown"].forEach(evt=>{
-    addBtn?.addEventListener(evt, (e)=>{
-      if (evt==="keydown" && e.key !== "Enter" && e.key !== " ") return;
-      openPicker(e);
-    });
+  // فقط change یدونه input کافیست
+  fileInput?.addEventListener("change", (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    handleFiles(files).then(()=>{ fileInput.value=""; });
+  });
+
+  // Archive
+  archiveBtn?.addEventListener("click", () => {
+    archiveStories = loadArchive();
+    if (!archiveStories.length) { alert("No archived stories yet."); return; }
+    openViewer(0, true);
+  });
+
+  closeBtn?.addEventListener("click", closeViewer);
+  prevBtn?.addEventListener("click", prev);
+  nextBtn?.addEventListener("click", next);
+
+  window.addEventListener("keydown", (e) => {
+    if (viewer?.hasAttribute("hidden")) return;
+    if (e.key === "Escape") closeViewer();
+    if (e.key === "ArrowLeft") prev();
+    if (e.key === "ArrowRight") next();
+  });
+
+  viewer?.addEventListener("click", (e) => { if (e.target === viewer) closeViewer(); });
+
+  enableSwipe();
+}
+
   });
 
   fileInput?.addEventListener("change", (e) => {
